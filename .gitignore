@@ -1,0 +1,16 @@
+__pycache__
+*.sqlite3
+*.csv
+*.xlsx
+# *.yaml
+*.exe
+chrome-win
+*.ipynb
+chrome
+receiving_original_data
+wip
+*.log
+*.pdf
+*.png
+*.mp3
+

@@ -14,8 +14,6 @@ def get_target_csv(driver):
     print(f"Next month first day: {formatted_date}")    
 
 
-
-
     with pyodbc.connect(
         driver
     ) as conn:
@@ -29,6 +27,13 @@ def get_target_csv(driver):
             AND SUPP != '4001'
             AND VALID_DATE != '{formatted_date}'
         """
+        #有効日が次月初日のデータチェック用
+        sql_query_price_valid_data_check = f"""
+            SELECT *
+            FROM GTAPPROD.TGV_PART_PUR_PRICE 
+            WHERE VALID_DATE = '{formatted_date}'
+        """
+
         sql_query_supp = f"""
             SELECT *
             FROM GTAPPROD.TGM_SUPP
@@ -48,13 +53,23 @@ def get_target_csv(driver):
         part_base_df['KEY'] = part_base_df['DEPT'] + part_base_df['PARTNO']
         part_base_df = part_base_df.drop(['DEPT', 'PARTNO'], axis=1)
 
+        price_df_valid_data_check = pd.read_sql(sql_query_price_valid_data_check, conn)
+        price_df_valid_data_check['KEY'] = price_df_valid_data_check['DEPT'] + price_df_valid_data_check['PARTNO']
+        price_df_valid_data_check = price_df_valid_data_check[['KEY','VALID_DATE']]
+        price_df_valid_data_check = price_df_valid_data_check.rename(columns={'VALID_DATE':'VALID_DATE_CHECK'})
+       #KEYの重複削除
+        price_df_valid_data_check = price_df_valid_data_check.drop_duplicates(subset=['KEY'])
+      
 
 
-    # データフレームをマージする
+       # データフレームをマージする
         merged_price_df = pd.merge(price_df, supp_df, on='SUPP', how='left')
         merged_price_df = pd.merge(merged_price_df, part_base_df, on='KEY', how='left')
+        merged_price_df = pd.merge(merged_price_df, price_df_valid_data_check, on='KEY', how='left')
+        #VALID_DATE_CHECKが空白のもののみ抽出
+        merged_price_df = merged_price_df[merged_price_df['VALID_DATE_CHECK'].isna()]
         merged_price_df = merged_price_df.drop(['KEY'], axis=1)
-    
+
     return next_month,next_month_year,merged_price_df
        
 
